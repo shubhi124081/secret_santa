@@ -52,7 +52,7 @@ apply(df, 1, function(x) writeNameFn(m1 = x["Person1"], m2 = x["Person2"],
                                      path1 = path))
 }
 
-secret_santa(name_vec = c("Fabiola", "John", "Leila", "Tamara", "Scott", 
-                          "Kevin", "Richard", "Shubhi", "Jeremey"),
+# Add participant names and provide file path for write out 
+secret_santa(name_vec = c("Name1", "Name2", "Name3", "Name4"),
              path = "~/Downloads/")
 
