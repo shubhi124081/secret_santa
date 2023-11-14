@@ -78,6 +78,6 @@ result <- assign_secret_santa(names_vec, illegal)
 apply(result, 1, function(x) {
   write_name_fn(
     m2 = x["Name"], m1 = x["SecretSanta"],
-    path1 = path
+    path1 = "~/Downloads"
   )
 })
