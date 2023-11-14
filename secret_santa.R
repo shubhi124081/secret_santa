@@ -1,58 +1,83 @@
-# Load libs 
-library(R.utils)
+# Script to assign Secret Santa considering not_allowed pairs
 
-# Some functions I need 
-# Timeout function
-timeoutCatch <- function(func, timeout = 10, ...) {
-  val <- tryCatch({
-    withTimeout({
-      func(...)
-    }, timeout = timeout)
-  }, TimeoutException = function(ex) {
-    # If evaluation of the function reaches threshold, return 'Timeout!'
-    return('Timeout!')
-  })
-  return(val)
+# Some functions I need
+# Worker fucntion to process list of "illegal" combinations
+illegal_process <- function(names_vec, illegal) {
+  # create a data frame containing the illegal combinations per name and
+  # blanks for names that don't have illegal combinations
+  # bind
+  df <- do.call(rbind, illegal)
+  colnames(df) <- c("gifter", "giftee")
+  df2 <- data.frame(
+    "gifter" = names_vec,
+    "giftee" = rep("", length(names_vec))
+  )
+  # match illegal combinations with the names in name vec
+  df2[, "giftee"] <- df[match(names_vec, df[, "gifter"]), "giftee"]
+  df2 <- replace(df2, is.na(df2), "")
+  return(df2)
 }
 
-# Assign a secret santee to every person 
-# Also, make sure no one is assigned themselves - there's an elegant solution 
-# out there, this is not it 
+# Assign everybody a valid secret santa
+get_names <- function(names_vec, illegal) {
+  n <- length(names_vec)
+  repeat {
+    assigned <- sample(names_vec)
+    valid_assignment <- all(sapply(1:n, function(i) {
+      paste0(names_vec[i], "-", assigned[i]) %in%
+        paste0(illegal[i, ], collapse = "-")
+    })) == FALSE
+    # Check that no one has got themself
+    if (sum(assigned == names_vec) != 0) valid_assignment <- FALSE
 
-getNames <- function(x) {
-  n <- length(x)
-  ind1 <- sample(1:n, n)
-  ind2 <- sample(1:n, n)
-  df1 <- data.frame("Person1" = x[ind1], "Person2" = x[ind2])
-  while (sum(df1[, 1] == df1[, 2]) != 0) {
-    df1 <- getNames(x)
+    if (valid_assignment) {
+      break
+    }
   }
-  return(df1)
+  return(assigned)
 }
 
-# Function to write out everyone's names 
-writeNameFn <- function(m1, m2, path1) {
+# Function to write out everyone's names
+write_name_fn <- function(m1, m2, path1) {
   init1 <- file(paste0(path1, "For_", m1, ".txt"))
   writeLines(paste0("Your person is ", m2), init1)
   close(init1)
 }
 
-# Generate the names, write out files with each person's secret santee 
-# Note: This function doesn't return any values!
+# Workflow
+assign_secret_santa <- function(names_vec, illegal) {
+  # Make sure not_allowed pairs are sorted to handle order-independent input
+  illegal <- illegal_process(names_vec, illegal)
 
-secret_santa <- function(name_vec, path = "~/Downloads/") {
-# Get rid of spaces in between names 
-name_vec <- gsub(" ", "", name_vec)
-
-# Run assigned names within in the timeout function 
-# (just in case it takes forever)
-df <- timeoutCatch(getNames, x = name_vec)
-
-apply(df, 1, function(x) writeNameFn(m1 = x["Person1"], m2 = x["Person2"],
-                                     path1 = path))
+  # Randomly shuffle the names until a valid assignment is found
+  assigned <- get_names(names_vec, illegal)
+  # Create a data frame with names and their assigned Secret Santas
+  result <- data.frame(Name = names_vec, SecretSanta = assigned)
+  return(result)
 }
 
-# Add participant names and provide file path for write out 
-secret_santa(name_vec = c("Name1", "Name2", "Name3", "Name4"),
-             path = "~/Downloads/")
+# Data
+# Pool
+names_vec <- c(
+  "Name 1", "Name 2", "Name 3", "Name 4", "Name 5", "Name 6", "Name 7",
+  "Name 8", "Name 9", "Name 10"
+)
 
+# Illegal pairs
+# On the right is the secret santa and on the left is the santee
+illegal <- list(
+  c("Name 1", "Name 2"),
+  c("Name 3", "Name 4"),
+  c("Name 5", "Name 6")
+)
+
+# Result
+result <- assign_secret_santa(names_vec, illegal)
+
+# Write out
+apply(result, 1, function(x) {
+  write_name_fn(
+    m2 = x["Name"], m1 = x["SecretSanta"],
+    path1 = path
+  )
+})
